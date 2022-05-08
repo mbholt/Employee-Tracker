@@ -3,9 +3,6 @@ const inquirer = require('inquirer');
 const mysql = require('mysql2');
 const cTable = require('console.table');
 
-// ????????????????????????????????
-const { choices } = require('yargs');
-
 const connection = mysql.createConnection(
     {
         host: 'localhost',
@@ -53,6 +50,18 @@ function startPrompt() {
                         value: 'updateEmp'
                     },
                     {
+                        name: 'View employees by deparment',
+                        value: 'viewEmpDept'
+                    },
+                    {
+                        name: 'View employees by manager',
+                        value: 'viewEmpMan'
+                    },
+                    {
+                        name: 'View departmental payroll expenses',
+                        value: 'viewExp'
+                    },
+                    {
                         name: 'End',
                         value: 'end'
                     }
@@ -60,7 +69,6 @@ function startPrompt() {
             }            
         ])
         .then( (answers) => {
-            console.log(answers)
             switch (answers.opt) {
                 case "viewDept":
                     return viewDept()
@@ -75,7 +83,13 @@ function startPrompt() {
                 case "addEmp":
                     return addEmp()
                 case "updateEmp":
-                    return updateEmp()
+                    return employeeList()
+                case "viewEmpDept":
+                    return viewEmpDept()
+                case "viewEmpMan":
+                    return viewEmpMan()
+                case "viewExp":
+                    return viewExp()
                 case "end":
                     return
                 default:
@@ -92,7 +106,6 @@ function viewDept() {
         console.table(res)
         startPrompt();
     });
-
 }
 
 function viewRoles() {
@@ -109,7 +122,7 @@ function viewRoles() {
 function viewEmp() {
     console.log('View All Employees:');
     connection.query(
-    'SELECT * FROM employees',
+    `SELECT e.first_name AS 'Employee First Name', e.last_name AS 'Employee Last Name', e.role_id AS 'Employee Role ID', e.manager_id AS 'Employee Manager ID', r.title AS 'Employee Title', r.salary AS 'Employee Salary', r.department_id AS 'Department ID' FROM employees e INNER JOIN roles r WHERE r.id = e.role_id`,
     function (err, res) {
         if (err) throw err;
         console.table(res)
@@ -205,9 +218,8 @@ function addEmp() {
             var empLast = data.addEmpLast;
             var empRole = data.addEmployeeRole;
             var empMan = data.addEmpMan;
-            console.log(empFirst, empLast, empRole, empMan);
             connection.query(
-            'INSERT INTO employees SET ?',
+            `INSERT INTO employees SET ?`,
                 {first_name: empFirst, last_name: empLast, role_id: empRole, manager_id: empMan},
             function (err, res) {
                 if (err) throw err;
@@ -216,23 +228,64 @@ function addEmp() {
             })
         })
 }
+function employeeList() {
+    connection.query(
+    `SELECT * FROM employees`,
+    function (err, res) {
+        if (err) throw err;
+        const employeeList = res.map(({ id, first_name, last_name }) => ({
+            value: id, name: `${first_name} ${last_name}`
+        }));
+        console.table(res);
+        updateEmp(employeeList);    
+    })
+}
 
-function updateEmp() {
+function updateEmp(employeeList) {
     console.log('Update An Employee Role:');
+    inquirer
+        .prompt([
+            {
+                type: 'list',
+                message: 'Which employee would you like to update?',
+                name: 'updateEmpName',
+                choices: employeeList
+            },
+            {
+                type: 'input',
+                message: 'What is the employee\'s new role id?',
+                name: 'updateEmpRole'
+            },
+            {
+                type: 'input',
+                message: 'What is the employee\'s new salary?',
+                name: 'updateEmpSal'
+            }
+        ])
+        .then((data) => {
+            var updatedName = data.updateEmpName;
+            var updatedRole = data.updateEmpRole;
+            var updatedSal = data.updateEmpSal;
+            console.log(updatedName);
+            connection.query(
+            `UPDATE employees SET role_id = ${updatedRole} WHERE id = ${updatedName}`,
+            `UPDATE roles SET salary = ${updatedSal} WHERE id = ${updatedRole}`,
+            function (err, res) {
+                if (err) throw err;
+            viewEmp();
+            })
+    }) 
+}
 
-    // inquirer
-    //     .prompt([
-    //         {
-    //             type: 'list',
-    //             message: 'Which employee\'s role would you like to update?',
-    //             choices: []
-    //         },
-    //         {
-    //             type: 'list',
-
-    //         }
-    //     ]) 
-    startPrompt();
+function viewEmpDept() {
+    console.log('View Employees By Department:');
+    connection.query(
+    `SELECT d.id AS 'Department ID', d.name AS 'Department Name', r.title AS 'Employee Title', e.first_name AS 'First Name', e.last_name AS 'Last Name' FROM employees e INNER JOIN roles r ON e.role_id = r.id INNER JOIN departments d ON d.id = r.department_id`,
+    function (err, res) {
+        if (err) throw err;
+        console.table(res)
+        startPrompt();
+    });
 }
 
 startPrompt();
