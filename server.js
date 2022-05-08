@@ -54,14 +54,6 @@ function startPrompt() {
                         value: 'viewEmpDept'
                     },
                     {
-                        name: 'View employees by manager',
-                        value: 'viewEmpMan'
-                    },
-                    {
-                        name: 'View departmental payroll expenses',
-                        value: 'viewExp'
-                    },
-                    {
                         name: 'End',
                         value: 'end'
                     }
